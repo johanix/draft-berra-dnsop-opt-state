@@ -39,7 +39,18 @@ informative:
 
 --- abstract
 
-Yada, yada, yada.
+This document introduces the Transaction State (TS) EDNS(0) option code
+to enable the exchange of state information between DNS entities via
+the DNS protocol. The TS option allows DNS clients and servers to include
+transaction-specific state data in both queries and responses, overcoming
+limitations of existing mechanisms like Extended DNS Errors (EDE) which
+are constrained to error responses and human-readable text. By utilizing
+the TS option, DNS entities can communicate operational states essential
+for coordination in scenarios such as synchronization of SIG(0) key
+states between child and parent server, and state synchronization between
+signers in distributed multi-signer DNSSEC configurations.
+This mechanism enhances the efficiency and reliability of DNS operations
+requiring mutual state awareness between parties.
 
 This document proposes such a mechanism.
 
