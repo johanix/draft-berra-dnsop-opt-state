@@ -12,10 +12,28 @@
 ]>
 
 
-<rfc ipr="trust200902" docName="draft-johani-dnsop-delegation-mgmt-via-ddns-03" category="std" consensus="true" tocInclude="true" sortRefs="true" symRefs="true">
+<rfc ipr="trust200902" docName="draft-berra-dnsop-transaction-state-00" category="std" consensus="true" tocInclude="true" sortRefs="true" symRefs="true">
   <front>
-    <title abbrev="DDNS Updates of Delegation Information">Automating DNS Delegation Management via DDNS</title>
+    <title abbrev="DDNS Updates of Delegation Information">Transaction State Signalling Via DNS EDNS(0) OPT</title>
 
+    <author initials="E." surname="Bergström" fullname="Erik Bergström">
+      <organization>The Swedish Internet Foundation</organization>
+      <address>
+        <postal>
+          <country>Sweden</country>
+        </postal>
+        <email>erik.bergstrom@internetstiftelsen.se</email>
+      </address>
+    </author>
+    <author initials="L." surname="Fernandez" fullname="Leon Fernandez">
+      <organization>The Swedish Internet Foundation</organization>
+      <address>
+        <postal>
+          <country>Sweden</country>
+        </postal>
+        <email>leon.fernandez@internetstiftelsen.se</email>
+      </address>
+    </author>
     <author initials="J." surname="Stenstam" fullname="Johan Stenstam">
       <organization>The Swedish Internet Foundation</organization>
       <address>
@@ -40,9 +58,9 @@
 <t>This document proposes such a mechanism.</t>
 
 <t>TO BE REMOVED: This document is being collaborated on in Github at:
-<eref target="https://github.com/johanix/draft-johani-dnsop-delegation-mgmt-via-ddns">https://github.com/johanix/draft-berra-dnsop-opt-transaction-state</eref>.
+<eref target="https://github.com/johanix/draft-berra-dnsop-transaction-state-00">https://github.com/johanix/draft-berra-dnsop-opt-transaction-state</eref>.
 The most recent working version of the document, open issues, etc, should all be
-available there.  The author (gratefully) accept pull requests.</t>
+available there.  The authors (gratefully) accept pull requests.</t>
 
 
 
@@ -75,36 +93,153 @@ when, and only when, they appear in all capitals, as shown here.</t>
 
 </section>
 </section>
-<section anchor="use-cases"><name>Use Cases</name>
-
-<t>...</t>
-
-<section anchor="synchronization-of-sig0-key-state-between-child-and-parent"><name>Synchronization of SIG(0) Key State Between Child and Parent</name>
-
-<t>...</t>
-
-</section>
-<section anchor="synchronization-of-state-between-signers-in-distributed-multi-signer"><name>Synchronization of State Between Signers in Distributed Multi-Signer</name>
-
-<t>...</t>
-
-</section>
-</section>
 <section anchor="terminology"><name>Terminology</name>
 
 <dl>
   <dt>SIG(0)</dt>
   <dd>
-    <t>An assymmetric signing algorithm that allows the recipient to only
-need to know the public key to verify a signature created by the
+    <t>An assymmetric signing algorithm that allows the recipient to only 
+need to know the public key to verify a signature created by the 
 senders private key.</t>
   </dd>
 </dl>
 
 </section>
-<section anchor="comparision-with-extended-dns-error-codes"><name>Comparision With Extended DNS Error Codes</name>
+<section anchor="use-cases"><name>Use Cases</name>
+
+<t>There are two specific use cases where the proposed new OPT code will
+solve current problems. In both cases private EDE info codes were
+initially used, but it was quickly realized that while EDE provides
+an excellent model for the type of communication needed, EDE was too
+limited in scope and another mechanism is needed.</t>
+
+<t>The proposed mechanism re-uses the same format as EDE, while
+explicitly removing some of the scope limitation.</t>
+
+<section anchor="synchronization-of-sig0-key-state-between-child-and-parent"><name>Synchronization of SIG(0) Key State Between Child and Parent</name>
+
+<t>In draft-johani-dnsop-delegation-mgmt-via-ddns the child operator
+signs DNS UPDATE messages sent to the parent receiver using a SIG(0)
+private key that the parent receiver must have the public key
+for. While there is a mechanism for both uploading and rolling the
+public SIG(0) key there is still a risk of the child operator and the
+parent receiver getting out of sync.</t>
+
+<t>This will be noticed by the child if a DNS UPDATE is refused, and the
+parent receiver does have the opportunity and abiulity to provide more
+details of the refusal via an EDE opcode <xref target="RFC8914"/>, but at that point
+it is too late to immediately get back in sync again and as a result
+the needed delegation synchronization that triggered the DNS UPDATE
+will be delayed.</t>
+
+<t>Using the proposed OPT TransactionState the child gains the ability to
+inform the parent about its own state and in return become aware of
+the parent's state independently of a new DNS UPDATE (i.e. the OPT
+exchange may be sent via a normal DNS QUERY + response.</t>
+
+</section>
+<section anchor="synchronization-of-state-between-signers-in-distributed-multi-signer"><name>Synchronization of State Between Signers in Distributed Multi-Signer</name>
+
+<t>The DNSSEC multi-signer architecture <xref target="RFC8901"/> defines a set of
+processes for managing multiple DNSSEC signers, each with its own set
+of DNSSEC keys. However, the signers need to communicate to exchange
+DNSKEY records with each other (as each signer must sign the DNSKEY
+RRset including also other signer's DNSKEYs using its KSK).</t>
+
+<t>Multi-signer logic was initially managed via a monolithic, central
+"controller" that queried the individual signers for data, computed
+the changes needed and inserted the changes into each signer. This
+model is changing to a distributed model, where there is one
+controller next to each signer (i.e. under the control of the same
+entity, to avoid the need for an external third party that has access
+to modify contents of a zone at the signer).</t>
+
+<t>However, with a distributed multi-signer model, the individual
+controllers need to be able to synchronize their state as they step
+through the different "processes" defined in <xref target="RFC8901"/>. There are
+two parties to each exchange and they need the ability to both express
+the sender's state and, in return, receive the receivers state.</t>
+
+<t>Again, this can not be achieved by using EDE.</t>
+
+</section>
+</section>
+<section anchor="comparision-to-extended-dns-errors-rfc8914"><name>Comparision to Extended DNS Errors <xref target="RFC8914"/></name>
+
+<t>EDE (Extended DNS Errors) specify a mechanism by which a receiver of a 
+DNS message gains the ability to provide more information about the 
+reason for a negative response. EDE data travels in an OPT record in 
+the response and consist of an EDE code and, optionally, an EDE "Extra 
+Text". It is possible to return EDE data with all types of DNS 
+messages, including QUERY, NOTIFY and UPDATE.</t>
+
+<t>However, there are three limitations to EDE that make it insufficent 
+for communicating state between two parties:</t>
+
+<t><list style="numbers">
+  <t>An EDE must only be present in a response, not in the originating message.</t>
+  <t>An EDE must only be used to augment an error response. It should not 
+be part of a successful response.</t>
+  <t>An EDE must contain an EDE info code (16 bits) and may contain "Extra 
+Text". However this extra text is intended for human consumption, 
+not automated parsing. To communicate state between two parties 
+this requirement is too strict.</t>
+</list></t>
+
+<t>These limitations are not a problem, as EDE serves a different purpose. But it is 
+clear that for use cases like the above examples, EDE is not the right 
+mechanism and another mechanism is needed. Hence the present proposal.</t>
 
 <t>...</t>
+
+</section>
+<section anchor="transaction-state-edns0-option-format"><name>Transaction State EDNS0 Option Format</name>
+
+<t>This document uses an Extended Mechanism for DNS (EDNS0) <xref target="RFC6891"/>
+option to include Transaction State (DTS) information in DNS
+messages. The option is structured as follows:</t>
+
+<figure><artwork><![CDATA[
+                                         1   1   1   1   1   1
+ 0   1   2   3   4   5   6   7   8   9   0   1   2   3   4   5    +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+ 0: |                            OPTION-CODE                        |    +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+ 2: |                           OPTION-LENGTH                       |    +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+ 4: | STATE-CODE                                                    |    +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+ 6: / ETRA-DATA ...                                                 /    +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+]]></artwork></figure>
+
+<t>Field definition details:</t>
+
+<t>OPTION-CODE:
+    2 octets / 16 bits (defined in <xref target="RFC6891"/>) contains the value NN for TS.</t>
+
+<t>OPTION-LENGTH:
+    2 octets / 16 bits (defined in <xref target="RFC6891"/>) contains the length of
+    the payload (everything after OPTION-LENGTH) in octets and should
+    be 2 plus the length of the EXTRA-TEXT field (which may be a
+    zero-length string).</t>
+
+<t>STATE-CODE:
+    16 bits, which is the principal contribution of this
+    document. This 16-bit value, encoded in network most significant
+    bit (MSB) byte order, provides the additional context for the
+    RESPONSE-CODE of the DNS message. The INFO-CODE serves as an index
+    into the "Extended DNS Errors" registry, defined and created in
+    Section 5.2.</t>
+
+<t>EXTRA-DATA:
+    a variable-length sequence of octets that may hold additional
+    information. This information is intended for per STATE-CODE
+    automated parsing, not human consumption. The length of the
+    EXTRA-DATA MUST be derived from the OPTION-LENGTH field. The
+    EXTRA-DATA field may be zero octets in length, for values of
+    STATE-CODE.</t>
+
+<t>The Transaction State (TS) option may be included in any outgoing
+message (QUERY, NOTIFY, UPDATE, etc.) and in any response (SERVFAIL,
+NXDOMAIN, REFUSED, even NOERROR, etc.) to a query that includes an OPT
+pseudo-RR <xref target="RFC6891"/>.</t>
+
+<t>The Transaction State option may always be ignored by the recipient.</t>
+
+<t>This document includes a set of initial codepoints but is extensible
+via the IANA registry defined and created in Section 5.2.</t>
 
 </section>
 <section anchor="security-considerations"><name>Security Considerations.</name>
@@ -114,8 +249,18 @@ senders private key.</t>
 </section>
 <section anchor="iana-considerations"><name>IANA Considerations.</name>
 
-<t>IANA is requested to assign a new "scheme" value to the registry for
-"DSYNC Location of Synchronization Endpoints" as follows:</t>
+<section anchor="a-new-transaction-state-edns-option"><name>A New Transaction State EDNS Option</name>
+
+<t>IANA is requested to assign a value to for the "Transaction State"
+EDNS(0) Option in the "DNS EDNS0 Option Codes (OPT) registry.</t>
+
+</section>
+</section>
+<section anchor="a-new-registry-for-transaction-state-info-codes"><name>A New Registry for Transaction State Info-Codes</name>
+
+<t>IANA is requested to create and maintain a new registry called
+"Transaction State Info-Codes" on the "Domain Name System (DNS)
+Parameters" web page as follows:</t>
 
 <dl>
   <dt>Reference</dt>
@@ -125,7 +270,7 @@ senders private key.</t>
 </dl>
 
 <texttable>
-      <ttcol align='left'>RRtype</ttcol>
+      <ttcol align='left'>Range</ttcol>
       <ttcol align='left'>Scheme</ttcol>
       <ttcol align='left'>Purpose</ttcol>
       <ttcol align='left'>Reference</ttcol>
@@ -137,6 +282,12 @@ senders private key.</t>
 
 <t><vspace blankLines='999' /></t>
 
+</section>
+<section anchor="references"><name>References</name>
+
+<section anchor="normative-references"><name>Normative References</name>
+
+</section>
 </section>
 <section anchor="acknowledgements"><name>Acknowledgements.</name>
 
@@ -237,6 +388,57 @@ senders private key.</t>
   <seriesInfo name='DOI' value='10.17487/RFC8174'/>
 </reference>
 
+<reference anchor='RFC8914' target='https://www.rfc-editor.org/info/rfc8914'>
+  <front>
+    <title>Extended DNS Errors</title>
+    <author fullname='W. Kumari' initials='W.' surname='Kumari'/>
+    <author fullname='E. Hunt' initials='E.' surname='Hunt'/>
+    <author fullname='R. Arends' initials='R.' surname='Arends'/>
+    <author fullname='W. Hardaker' initials='W.' surname='Hardaker'/>
+    <author fullname='D. Lawrence' initials='D.' surname='Lawrence'/>
+    <date month='October' year='2020'/>
+    <abstract>
+      <t>This document defines an extensible method to return additional information about the cause of DNS errors. Though created primarily to extend SERVFAIL to provide additional information about the cause of DNS and DNSSEC failures, the Extended DNS Errors option defined in this document allows all response types to contain extended error information. Extended DNS Error information does not change the processing of RCODEs.</t>
+    </abstract>
+  </front>
+  <seriesInfo name='RFC' value='8914'/>
+  <seriesInfo name='DOI' value='10.17487/RFC8914'/>
+</reference>
+
+<reference anchor='RFC8901' target='https://www.rfc-editor.org/info/rfc8901'>
+  <front>
+    <title>Multi-Signer DNSSEC Models</title>
+    <author fullname='S. Huque' initials='S.' surname='Huque'/>
+    <author fullname='P. Aras' initials='P.' surname='Aras'/>
+    <author fullname='J. Dickinson' initials='J.' surname='Dickinson'/>
+    <author fullname='J. Vcelak' initials='J.' surname='Vcelak'/>
+    <author fullname='D. Blacka' initials='D.' surname='Blacka'/>
+    <date month='September' year='2020'/>
+    <abstract>
+      <t>Many enterprises today employ the service of multiple DNS providers to distribute their authoritative DNS service. Deploying DNSSEC in such an environment may present some challenges, depending on the configuration and feature set in use. In particular, when each DNS provider independently signs zone data with their own keys, additional key-management mechanisms are necessary. This document presents deployment models that accommodate this scenario and describes these key-management requirements. These models do not require any changes to the behavior of validating resolvers, nor do they impose the new key-management requirements on authoritative servers not involved in multi-signer configurations.</t>
+    </abstract>
+  </front>
+  <seriesInfo name='RFC' value='8901'/>
+  <seriesInfo name='DOI' value='10.17487/RFC8901'/>
+</reference>
+
+<reference anchor='RFC6891' target='https://www.rfc-editor.org/info/rfc6891'>
+  <front>
+    <title>Extension Mechanisms for DNS (EDNS(0))</title>
+    <author fullname='J. Damas' initials='J.' surname='Damas'/>
+    <author fullname='M. Graff' initials='M.' surname='Graff'/>
+    <author fullname='P. Vixie' initials='P.' surname='Vixie'/>
+    <date month='April' year='2013'/>
+    <abstract>
+      <t>The Domain Name System's wire protocol includes a number of fixed fields whose range has been or soon will be exhausted and does not allow requestors to advertise their capabilities to responders. This document describes backward-compatible mechanisms for allowing the protocol to grow.</t>
+      <t>This document updates the Extension Mechanisms for DNS (EDNS(0)) specification (and obsoletes RFC 2671) based on feedback from deployment experience in several implementations. It also obsoletes RFC 2673 ("Binary Labels in the Domain Name System") and adds considerations on the use of extended labels in the DNS.</t>
+    </abstract>
+  </front>
+  <seriesInfo name='STD' value='75'/>
+  <seriesInfo name='RFC' value='6891'/>
+  <seriesInfo name='DOI' value='10.17487/RFC6891'/>
+</reference>
+
 
 
 
@@ -260,37 +462,93 @@ senders private key.</t>
   </back>
 
 <!-- ##markdown-source:
-H4sIAAUGEmcAA41W33PbNgx+51+BuS9JrnKcpLcuetjNjd00bWJndrJerrfb
-0RJtc5FIjaTsum3+932grPzq3VY9ESQAAvg+gEqSRAQdCpVSp18HW8qgzYIG
-oykNVKEWEK2hC2nkQpXKBFppSQMcd4SczZxapVGi6yqXQXmy88d2Z2ZuXRnX
-IreZkSXuyZ2ch+Rvu5RGJ7nxtkrye5OkXJQhwSVJjqOkdyTYb0pfB/2r4Z3I
-ICys26TkQy6ErlxKwdU+HPZ6x71DIZ2SKa4NyhkVxNq624WzdZVyRuNL+ogN
-zu+UN8Wt2kAjfzBIBhybED5Ik/8lC2tw9UZ5UemUPgWbvSRvXXBq7rHalLz4
-UwhZh6V1qaBEED5tfErvuzQNysBTGTeb3N9z1k8PrFugEF9i9ildLRVN1yrX
-fnkfFb21tcmbKrJFBjFwDVhRNXuqlLpIKVa167f+f9NbDz7oeVCFVzhTQpgG
-lJVKUcIWoiglSUJy5oOTGcrQ7XaFuFpqTwCvjvBXzlbWA2hfZ0uSVKqMcfQl
-a47pzZAmw4vxH8MBp/LYEOuZ4tJntijkzDogmRM4og2d6rCsZyRDKj4tQ6h8
-ur+/iHvdzJb7DVU+7zfEmSnn5JY3tgoJYjUe4TJ5kHRQf+78r48fIt9uVzAa
-pfWBnMo4ifWWPivlPPMbbA9QaZN8SbZSyMj7WoEgKjBflrYucpJFgfyFXAEm
-OSsU2znVpQh4wx/aWXBR5nVRbHZJZpmqUG9IuP0fOAy+2wBU6jwvAOMLZoiz
-eR2T38L1wdh1ofKFiq2IzhyNr87e3tDXrz9N3p4cHB//fHdHYHfT4hvQUmdt
-94pG6fDgqFVqNo56vdfYAIQSqZUq70br6dnpTm+XHgEgvF4YGWoHgqAV7wsD
-pAHz1vvx0cHdXRexk8xzHedEAFXE0yYkUMTZtaelkitdbGjubBmrjVrVi2Xw
-MUDwEdUsKSLPV4l7vWf+cM2pMsrJQn9RTfoji77QWcTe0w6jy3HC5wIZMAHE
-ixc0QfW1i849mzSNGLmBAcKcyD119vYurqdXe3udl+2aK9/Kk+Hv12eT4aCV
-p+/65+csiFZ4rD19N74+HzyVnno7GV9cDEeDxiH7wCk9245x9G/ikksFcXx5
-dTYe9flmTjQ87lCenRQsWEpxbFROMW4SGspnTs8aEN+cXNLBqxbLg4NjEKMR
-fjl4/eruTqyXyjQXWgPYGhF4bEhWlZKOnXA3ZLLSQRboE1yBLlkbii3BvL72
-ik4kxsyW1EBhujHZ0tl2UjK7t/z7ANdThp/eqLBWaMCTpeaWQwiXSAp9S4L+
-09ET6yk4jP7mOAcao1DPai7ERV0EnTSH9+7oSrlSG1vYxUaIJiCRUt9wp2zK
-UsE8I+4KHhuywNuFmcT8lIGrwARnrmK+6EpzqECA64ahbhRuhXiLjo5KVT0r
-4I1Jh23MID1HUem+5yjD68ehzjasDxcY+DmnUjm94hRhGqM+sWUlnY4z7CMC
-ouHnwKpNWwzReA46+UP9aaqyGqFvsG28htOmabr3Cmf9Uf/7w7gLkm0nWJMQ
-SoOQEblRa+r4bIne6tBKFnUkYFOPBZceXW+d6AymN6MTOrfZA2LPQByavLKg
-re8wm+Y2Vhbv2UTNwSmTKYCy84Tuu0J8o8kkbCpF32gag8Disnb8vtHTD5qt
-o3YH1kn86LvFs+/7/WjdH900ruN3iMWjH6fy4Yfr2/PAYS22jrjw/ey2Hflx
-RLWQ8D0zmd1GvPHc4UV4h5ri5wkOY5tjptkV00Whyi294v0ozh794HOb9HpC
-/Ippi1Eui5ak0bgr/gUKoRd1XwoAAA==
+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
+liT+AP+GRI2vZnjyUPwbwPj1NE0lAAA=
 
 -->
 
