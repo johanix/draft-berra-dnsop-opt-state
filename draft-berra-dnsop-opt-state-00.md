@@ -292,29 +292,76 @@ response to the original sender.
 This document includes a set of initial "state" codepoints but is 
 extensible via the IANA registry defined and created in Section 5.2. 
 
+# Defined States
+
+This document defines four initial STATE-CODEs. The mechanism is
+intended to be extensible and additional STATE-CODEs can be
+registered in the "State Option State-Codes" registry
+({state-code-registry}). The STATE-CODE from the "State" EDNS(0)
+option is used to serve as an index into the "State Option
+State-Codes" registry with the initial valuses defined below.
+
+## State Option State-Code 1 - SIG(0) Key State Inquiry
+
+For State-Code = 1 the EXTRA-DATA is defined as follows:
+
+EXTRA-DATA is four octets: 2 octets in network most significant bit
+(MSB) byte order containing the KeyId of the SIG(0) key and two octets
+(in MSB byte order) of Key State.
+
+                                             1   1   1   1   1   1
+    0    1   2   3   4   5   6   7   8   9   0   1   2   3   4   5
+   +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+ 
+0: |                         KEY ID                                |
+   +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+2: |                        KEY STATE                              |
+   +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+
+
+Defined values for SIG(0) Key State:
+
+0: Reserved. Must not be used.
+1: SIG(0) key is unknown
+2: SIG(0) key is invalid (eg. key data doesn't match algorithm)
+3: SIG(0) key is refused (eg. algorithm not accepted)
+4: SIG(0) key is known but validation has failed
+5: SIG(0) key is known but not trusted, automatic bootstrapping ongoing
+6: SIG(0) key is known but not trusted, manual bootstrapping required
+6: SIG(0) key is known and trusted
+
+To ensure that automatic delegation is correctly prepared and  
+bootstrapped, the child (or an agent for the child) sends a DNS QUERY
+to the parent UPDATE Reciever with QNAME="child.parent." and 
+QTYPE=ANY containing an State OPT with State-Code=1 and the KeyId of
+the SIG(0) key to inquire state for in the EXTRA-DATA.
+
+The response should contain both the KeyId and the Key State in the
+EXTRA-DATA, encoded as described above.
+
+
 # Security Considerations.
 
 ...
 
 # IANA Considerations.
 
-## A New Transaction State EDNS Option
+## A New "State" EDNS Option
 
-IANA is requested to assign a value to for the "Transaction State"
+IANA is requested to assign a value to for the "State"
 EDNS(0) Option in the "DNS EDNS0 Option Codes (OPT) registry.
 
-# A New Registry for Transaction State Info-Codes
+# A New Registry for State Option State-Codes {#state-code-registry}
 
 IANA is requested to create and maintain a new registry called
-"Transaction State Info-Codes" on the "Domain Name System (DNS)
+"State Option State-Codes" on the "Domain Name System (DNS)
 Parameters" web page as follows:
 
 Reference
 : (this document)
 
-| Range  | Scheme | Purpose               | Reference       |
-| ------ | ------ | --------------------- | --------------- |
-| ANY    |      2 | Delegation management | (this document) |
+| Range  | Purpose               | Reference       |
+| ------ | ---------| --------------------- | --------------- |
+| 0      | Reserved | Delegation management | (this document) |
 
 -------
 
