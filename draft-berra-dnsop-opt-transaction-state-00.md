@@ -1,6 +1,6 @@
 ---
-title: "Transaction State Signalling Via DNS EDNS(0) OPT"
-abbrev: DDNS Updates of Delegation Information
+title: "State Signalling Via DNS EDNS(0) OPT"
+abbrev: State Signalling Via DNS EDNS(0) OPT
 docname: draft-berra-dnsop-transaction-state-00
 date: {DATE}
 category: std
@@ -171,14 +171,15 @@ mechanism and another mechanism is needed. Hence the present proposal.
 
 ...
 
-# Transaction State EDNS0 Option Format
+# State EDNS0 Option Format 
 
 This document uses an Extended Mechanism for DNS (EDNS0) {{!RFC6891}}
-option to include Transaction State (DTS) information in DNS
-messages. The option is structured as follows: 
+option to include "State" information in DNS messages. The option is 
+structured as follows: 
+											 
 
-                                             1   1   1   1   1   1
-     0   1   2   3   4   5   6   7   8   9   0   1   2   3   4   5
+                                             1   1   1   1   1   1 
+     0   1   2   3   4   5   6   7   8   9   0   1   2   3   4   5 
    +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
 0: |                            OPTION-CODE                        |
    +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
@@ -189,42 +190,107 @@ messages. The option is structured as follows:
 6: / ETRA-DATA ...                                                 /
    +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
 
-Field definition details:
+Field definition details: 
 
-OPTION-CODE:
-    2 octets / 16 bits (defined in {{!RFC6891}}) contains the value NN for TS.
+OPTION-CODE: 
+    2 octets / 16 bits (defined in {{!RFC6891}}) contains the value NN for TS. 
 
-OPTION-LENGTH:
-    2 octets / 16 bits (defined in {{!RFC6891}}) contains the length of
-    the payload (everything after OPTION-LENGTH) in octets and should
-    be 2 plus the length of the EXTRA-TEXT field (which may be a
-    zero-length string).
+OPTION-LENGTH: 
+    2 octets / 16 bits (defined in {{!RFC6891}}) contains the length of 
+    the payload (everything after OPTION-LENGTH) in octets and should 
+    be 2 plus the length of the EXTRA-DATA field (which may be zero 
+    octets long). 
 
-STATE-CODE:
-    16 bits, which is the principal contribution of this
-    document. This 16-bit value, encoded in network most significant
-    bit (MSB) byte order, provides the additional context for the
-    RESPONSE-CODE of the DNS message. The INFO-CODE serves as an index
-    into the "Extended DNS Errors" registry, defined and created in
-    Section 5.2.
+STATE-CODE: 
+    16 bits, which is the principal contribution of this 
+    document. This 16-bit value, encoded in network most significant 
+    bit (MSB) byte order, provides information to the recipient of the
+	current "State" of the sender. The STATE-CODE serves as an index 
+    into the "DNS OPT State Code" registry, defined and created in 
+    Section 5.2. It is specifically noted that while some state codes 
+	will be defined in this registry, others are expected to be part 
+	of the private use area. 
 
-EXTRA-DATA:
-    a variable-length sequence of octets that may hold additional
-    information. This information is intended for per STATE-CODE
-    automated parsing, not human consumption. The length of the
-    EXTRA-DATA MUST be derived from the OPTION-LENGTH field. The
-    EXTRA-DATA field may be zero octets in length, for values of
+EXTRA-DATA: 
+    a variable-length sequence of octets that may hold additional 
+    information. This information is intended for per STATE-CODE 
+    automated parsing, not human consumption. The length of the 
+    EXTRA-DATA MUST be derived from the OPTION-LENGTH field. The 
+    EXTRA-DATA field may be zero octets in length, for some values of 
     STATE-CODE. 
 
-The Transaction State (TS) option may be included in any outgoing
-message (QUERY, NOTIFY, UPDATE, etc.) and in any response (SERVFAIL,
-NXDOMAIN, REFUSED, even NOERROR, etc.) to a query that includes an OPT
-pseudo-RR {{!RFC6891}}.
+The State option may be included in any outgoing message (QUERY, 
+NOTIFY, UPDATE, etc.) and in any response (SERVFAIL, NXDOMAIN, 
+REFUSED, even NOERROR, etc.) to a query that includes an OPT 
+pseudo-RR {{!RFC6891}}. 
 
-The Transaction State option may always be ignored by the recipient.
+The State option may always be ignored by the recipient. However, if 
+the recipient does understand the State option and responding with its 
+own corresponding State option make sense, then it is expected to do so. 
 
-This document includes a set of initial codepoints but is extensible
-via the IANA registry defined and created in Section 5.2. 
+This document includes a set of initial "state" codepoints but is 
+extensible via the IANA registry defined and created in Section 5.2. 
+
+# SetState EDNS0 Option Format 
+
+This document uses an Extended Mechanism for DNS (EDNS0) {{!RFC6891}}
+option to update "State" information in a recipient via DNS
+messages. The option is structured as follows: 
+
+                                             1   1   1   1   1   1 
+     0   1   2   3   4   5   6   7   8   9   0   1   2   3   4   5 
+   +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+0: |                            OPTION-CODE                        |
+   +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+2: |                           OPTION-LENGTH                       |
+   +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+4: | STATE-CODE                                                    |
+   +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+6: / ETRA-DATA ...                                                 /
+   +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+
+Field definition details: 
+
+OPTION-CODE: 
+    2 octets / 16 bits (defined in {{!RFC6891}}) contains the value MM
+    for SetState.
+
+OPTION-LENGTH: 
+    2 octets / 16 bits (defined in {{!RFC6891}}) contains the length of 
+    the payload (everything after OPTION-LENGTH) in octets and should 
+    be 2 plus the length of the EXTRA-DATA field (which may be zero 
+    octets long). 
+
+STATE-CODE: 
+    16 bits, which is the principal contribution of this
+    document. This 16-bit value, encoded in network most significant
+    bit (MSB) byte order, provides information from the sender of the
+	DNS message about a suggested state change in the receiver.
+    The STATE-CODE serves as an index into the "DNS OPT State Code"
+    registry, defined and created in Section 5.2. It is specifically
+	noted that while some state codes will be defined in this
+	registry, others are expected to be part of the private use area.
+
+EXTRA-DATA: 
+    a variable-length sequence of octets that may hold additional 
+    information. This information is intended for per STATE-CODE 
+    automated parsing, not human consumption. The length of the 
+    EXTRA-DATA MUST be derived from the OPTION-LENGTH field. The 
+    EXTRA-DATA field may be zero octets in length, for some values of 
+    STATE-CODE. 
+
+The SetState option may be included in any outgoing message (QUERY, 
+NOTIFY, UPDATE, etc.) that includes an OPT pseudo-RR {{!RFC6891}}. 
+It must not be present in a response message.
+
+The SetState option may always be ignored by the recipient. However, if 
+the recipient does understand the SetState option it is expected to
+either make the suggested state change or not make it. Regardless of
+which, it is expected to provide an updated State option in the
+response to the original sender.
+
+This document includes a set of initial "state" codepoints but is 
+extensible via the IANA registry defined and created in Section 5.2. 
 
 # Security Considerations.
 
