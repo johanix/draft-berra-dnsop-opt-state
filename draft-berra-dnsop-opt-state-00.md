@@ -39,18 +39,15 @@ informative:
 
 --- abstract
 
-This document introduces the Transaction State (TS) EDNS(0) option code
-to enable the exchange of state information between DNS entities via
-the DNS protocol. The TS option allows DNS clients and servers to include
-transaction-specific state data in both queries and responses, overcoming
-limitations of existing mechanisms like Extended DNS Errors (EDE) which
-are constrained to error responses and human-readable text. By utilizing
-the TS option, DNS entities can communicate operational states essential
-for coordination in scenarios such as synchronization of SIG(0) key
-states between child and parent server, and state synchronization between
-signers in distributed multi-signer DNSSEC configurations.
-This mechanism enhances the efficiency and reliability of DNS operations
-requiring mutual state awareness between parties.
+This document introduces two new EDNS(0) option codes, State and SetState,
+to enable the exchange and update of state information between DNS entities
+via the DNS protocol.
+
+By utilizing the two new EDNS(0) option codes, DNS entities can communicate
+operational states essential for coordination in scenarios such as
+synchronization of SIG(0) key states between child and parent server,
+and state synchronization between signers in distributed multi-signer
+DNSSEC configurations.
 
 This document proposes such a mechanism.
 
@@ -63,7 +60,35 @@ available there.  The authors (gratefully) accept pull requests.
 
 # Introduction
 
-Yada, yada, yada.
+In certain operational scenarios, DNS entities require the ability
+to exchange state information to coordinate actions and maintain
+synchronization. Existing mechanisms like Extended DNS Errors
+(EDE){{!RFC8914}} are limited in scope—they are confined to error
+responses and are designed for conveying human-readable text rather
+than machine-parsable state information. This limitation poses
+challenges in scenarios where mutual state awareness between DNS
+entities is crucial for efficient and reliable operations.
+
+This document introduces two new EDNS(0) option codes: State and SetState.
+The State option enables DNS entities to include state information
+in both queries and responses, facilitating the exchange of operational
+states between parties. The SetState option allows a DNS entity to
+suggest a state change to the recipient, providing a mechanism for
+dynamic coordination.
+
+These options address the limitations of existing mechanisms by:
+
+•	Allowing state information to be included in both requests and responses.
+•	Enabling the inclusion of machine-parsable data rather than just human-readable text.
+•	Supporting state exchange in successful transactions, not just error conditions.
+
+By providing a standardized method for exchanging state information,
+these new EDNS(0) options enhance the efficiency, reliability, and
+security of DNS operations that require close coordination between
+entities. This mechanism allows for proactive state management,
+reducing the reliance on error-based communication and enabling
+smoother operational workflows.
+
 
 Knowledge of DNS NOTIFY {{!RFC1996}} and DNS Dynamic Updates
 {{!RFC2136}} and {{!RFC3007}} is assumed. DNS SIG(0) transaction
